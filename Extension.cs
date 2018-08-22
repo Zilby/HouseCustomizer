@@ -42,10 +42,7 @@ public class Extension : CustomizableHouse
 	public Transform exTransform;
 
 	[System.NonSerialized]
-	public Wall exWall;
-
-	[System.NonSerialized]
-	public float exPosition;
+	public HouseExtension hExt;
 
 	public override Dimensions Dim
 	{
@@ -91,7 +88,7 @@ public class Extension : CustomizableHouse
 	{
 		get { return exTransform; }
 	}
-			
+
 
 	#endregion
 
@@ -111,7 +108,7 @@ public class Extension : CustomizableHouse
 		FullHouse f = transform.GetComponentInParent<HouseCustomizer>().customizableHouse;
 		Wall w;
 		int reverse;
-		switch(i)
+		switch (i)
 		{
 			case 3:
 				w = Wall.right;
@@ -131,12 +128,12 @@ public class Extension : CustomizableHouse
 				reverse = -1;
 				break;
 		}
-		if (w == exWall)
+		if (w == hExt.wall)
 		{
 			pb_Object cutout = pb_ShapeGenerator.CubeGenerator(new Vector3(f.WallLength(w) - ((f.AO.foundationSeparation + f.AO.wallThickness) * 2f),
 																		   Mathf.Min(f.Dim.height, Dim.height) - f.AO.ceilingThickness, AO.wallThickness + NUDGE));
 			cutout.transform.SetParent(transform);
-			cutout.transform.localPosition = new Vector3((f.WallLength(w) + WallLength(w) - (f.AO.foundationSeparation * 4f)) * exPosition / 2f * reverse,
+			cutout.transform.localPosition = new Vector3((f.WallLength(w) + WallLength(w) - (f.AO.foundationSeparation * 4f)) * hExt.position / 2f * reverse,
 														 (Mathf.Min(f.Dim.height, Dim.height) - (f.AO.ceilingThickness + Dim.height)) / 2f, 0);
 
 			cutouts.Add(cutout);
@@ -144,7 +141,64 @@ public class Extension : CustomizableHouse
 		}
 	}
 
+	/// <summary>
+	/// Extends the roofs to match extensions.
+	/// </summary>
+	protected override void ExtendRoofs(List<pb_Object> roofs)
+	{
+		if (hExt.extendRoof && hExt.Extendable)
+		{
+			int[] triangles1 = new int[] { 1, 3 };
+			int[] triangles2 = new int[] { 5, 7 };
+			int[] triangles3 = new int[] { 0, 2 };
+			int[] triangles4 = new int[] { 9, 11 };
+
+			float ratio;
+			float distance;
+			float fixDist;
+
+			switch (hExt.wall)
+			{
+				case Wall.front:
+				case Wall.back:
+					ratio = Dim.frontGableHeight / customizer.customizableHouse.Dim.sideGableHeight;
+					distance = ((customizer.customizableHouse.Dim.depth) * ratio / 2f) - 
+						((AO.roofOverhangFront / 2f) + AO.foundationSeparation + AO.wallThickness) +
+						(AO.roofHeight * (1 - ratio));
+					fixDist = AO.foundationSeparation + AO.wallThickness;
+					break;
+				case Wall.right:
+				case Wall.left:
+				default:
+					ratio = Dim.sideGableHeight / customizer.customizableHouse.Dim.frontGableHeight;
+					distance = (customizer.customizableHouse.Dim.width * ratio / 2f) -
+						((AO.roofOverhangFront / 2f) + AO.foundationSeparation) +
+						(AO.roofHeight * (1 - ratio));
+					fixDist = AO.foundationSeparation;
+					break;
+			}
+
+			switch (hExt.wall)
+			{
+				case Wall.front:
+				case Wall.right:
+					roofs[0].TranslateVertices(triangles1, new Vector3(0, 0, distance));
+					roofs[0].TranslateVertices(triangles3, new Vector3(0, 0, -fixDist));
+					roofs[1].TranslateVertices(triangles2, new Vector3(0, 0, -distance));
+					roofs[1].TranslateVertices(triangles4, new Vector3(0, 0, fixDist));
+					break;
+				case Wall.back:
+				case Wall.left:
+					roofs[0].TranslateVertices(triangles2, new Vector3(0, 0, -distance));
+					roofs[0].TranslateVertices(triangles4, new Vector3(0, 0, fixDist));
+					roofs[1].TranslateVertices(triangles1, new Vector3(0, 0, distance));
+					roofs[1].TranslateVertices(triangles3, new Vector3(0, 0, -fixDist));
+					break;
+			}
+		}
+	}
+
 	protected override void CreateExtensions() { }
 
-	protected override void RemakeExtensions() { }	
+	protected override void RemakeExtensions() { }
 }

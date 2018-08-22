@@ -661,6 +661,44 @@ public abstract class CustomizableHouse
 		/// </summary>
 		[Range(-1, 1)]
 		public float position;
+
+		/// <summary>
+		/// Whether or not to extend the roof to intersect with the main house. 
+		/// </summary>
+		[ConditionalHide("Extendable")]
+		public bool extendRoof;
+
+		/// <summary>
+		/// Whether or not the roof is extendable. 
+		/// For this to be allowed the gables must be opposite and the heights must be the same. 
+		/// </summary>
+		/// <value><c>true</c> if extendable; otherwise, <c>false</c>.</value>
+		public bool Extendable
+		{
+			get
+			{
+				if (extent.customizer != null && extent.customizer.customizableHouse != null)
+				{
+					switch (wall)
+					{
+						case Wall.left:
+						case Wall.right:
+							return extent.Dim.SideGableActive &&
+								extent.customizer.customizableHouse.Dim.FrontGableActive &&
+								extent.Dim.height == extent.customizer.customizableHouse.Dim.height &&
+								extent.Dim.sideGableHeight <= extent.customizer.customizableHouse.Dim.frontGableHeight;
+							
+						case Wall.front:
+						case Wall.back:
+							return extent.Dim.FrontGableActive && 
+								extent.customizer.customizableHouse.Dim.SideGableActive &&
+								extent.Dim.height == extent.customizer.customizableHouse.Dim.height &&
+								extent.Dim.frontGableHeight <= extent.customizer.customizableHouse.Dim.sideGableHeight;
+					}
+				}
+				return false;
+			}
+		}
 	}
 
 	[System.Serializable]
@@ -2452,8 +2490,9 @@ public abstract class CustomizableHouse
 			r.faces[1].ToQuadOrTriangles(out triangles);
 
 			r.TranslateVertices(triangles, new Vector3(wTranslate, gableHeight + sideOffset, 0f));
-
 		}
+
+		ExtendRoofs(rS);
 
 		foreach (Dormer d in OD.dormers)
 		{
@@ -2463,6 +2502,11 @@ public abstract class CustomizableHouse
 			CreateDormer(d, d.alternateRoof ? r2 : r1, rDimensions, zOffset, sideOffset, -wOffset);
 		}
 	}
+
+	/// <summary>
+	/// Extends the roofs to match extensions.
+	/// </summary>
+	protected virtual void ExtendRoofs(List<pb_Object> roofs) {}
 
 	/// <summary>
 	/// Creates a gable for the given pb_object (assumed to be a cube). 
@@ -4117,8 +4161,7 @@ public abstract class CustomizableHouse
 				break;
 		}
 		e.extent.exTransform = GetHierarchyObject("Extension", extensionsObj.transform, position);
-		e.extent.exWall = e.wall;
-		e.extent.exPosition = e.position;
+		e.extent.hExt = e;
 		e.extent.AO = AO;
 	}
 
